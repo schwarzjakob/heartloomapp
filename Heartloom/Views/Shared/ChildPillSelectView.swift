@@ -6,23 +6,48 @@ struct ChildPillSelectView: View {
 
     private let columns = [GridItem(.adaptive(minimum: 100), spacing: 8)]
 
+    // Reuse gradients so we don't repeat ourselves
+    private let iconGradient = LinearGradient(
+        colors: [Color(red: 0.4, green: 0.7, blue: 1.0),
+                 Color(red: 0.88, green: 0.42, blue: 1.0)],
+        startPoint: .topLeading, endPoint: .bottomTrailing
+    )
+
+    private let borderGradient = LinearGradient(
+        colors: [Color(red: 0.4, green: 0.7, blue: 1.0),
+                 Color(red: 0.88, green: 0.42, blue: 1.0)],
+        startPoint: .leading, endPoint: .trailing
+    )
+
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-            ForEach(children) { child in
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+            ForEach(Array(children.enumerated()), id: \.element.id) { _, child in
                 let isSelected = selection.contains(child.id)
-                Button(action: {
+                Button {
                     if isSelected { selection.remove(child.id) } else { selection.insert(child.id) }
-                }) {
-                    HStack(spacing: 6) {
+                } label: {
+                    HStack(spacing: 8) {
                         Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(isSelected ? .accentColor : .secondary)
-                        Text(child.name).lineLimit(1)
-                        Spacer(minLength: 0)
+                            .foregroundStyle(
+                                isSelected
+                                ? AnyShapeStyle(iconGradient)
+                                : AnyShapeStyle(Color.secondary)
+                            )
+                            .font(.system(size: 16, weight: .semibold))
+
+                        Text(child.name)
+                            .font(.callout.weight(.medium))
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(isSelected ? Color.accentColor.opacity(0.15) : Color.secondary.opacity(0.08))
-                    .clipShape(Capsule())
+                    .glassChip(cornerRadius: 20)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(
+                                isSelected
+                                ? AnyShapeStyle(borderGradient)
+                                : AnyShapeStyle(Color.white.opacity(0.25)),
+                                lineWidth: 1.2
+                            )
+                    )
                 }
                 .buttonStyle(.plain)
             }

@@ -9,35 +9,68 @@ struct ChildrenListView: View {
     @State private var showingAdd = false
 
     var body: some View {
-        VStack {
-            if familyVM.children.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "person.crop.circle.badge.plus").font(.system(size: 40))
-                    Text("No children yet").font(.headline)
-                    Text("Add your child to start journaling.").foregroundColor(.secondary)
-                }.padding()
-            } else {
-                List(familyVM.children) { child in
-                    Button(action: { appState.selectedChild = child }) {
-                        HStack {
-                            Image(systemName: appState.selectedChild?.id == child.id ? "checkmark.circle.fill" : "circle")
-                                .foregroundColor(.accentColor)
-                            Text(child.name)
-                            Spacer()
-                            if let bd = child.birthdate {
-                                Text(DateFormatter.localizedString(from: bd, dateStyle: .medium, timeStyle: .none))
-                                    .foregroundColor(.secondary)
+        ScrollView {
+            VStack(spacing: 18) {
+                if familyVM.children.isEmpty {
+                    GlassCard {
+                        VStack(spacing: 12) {
+                            Image(systemName: "person.crop.circle.badge.plus")
+                                .font(.system(size: 40))
+                                .foregroundStyle(LinearGradient(colors: [.white.opacity(0.9), Color(red: 0.6, green: 0.85, blue: 1.0)], startPoint: .top, endPoint: .bottom))
+                            Text("No children yet")
+                                .font(.headline)
+                            Text("Add your first child to begin weaving together their journey.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                } else {
+                    ForEach(familyVM.children) { child in
+                        Button(action: {
+                            appState.selectedChild = child
+                        }) {
+                            GlassCard(cornerRadius: 24, padding: 18) {
+                                HStack(spacing: 16) {
+                                    Circle()
+                                        .fill(LinearGradient(colors: [Color(red: 0.4, green: 0.7, blue: 1.0), Color(red: 0.78, green: 0.42, blue: 0.95)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                        .opacity(0.5)
+                                        .frame(width: 46, height: 46)
+                                        .overlay(
+                                            Image(systemName: appState.selectedChild?.id == child.id ? "checkmark.circle.fill" : "person.crop.circle")
+                                                .font(.system(size: 26, weight: .medium))
+                                                .foregroundStyle(.white)
+                                        )
+
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(child.name)
+                                            .font(.headline)
+                                        if let bd = child.birthdate {
+                                            Text(DateFormatter.localizedString(from: bd, dateStyle: .medium, timeStyle: .none))
+                                                .font(.footnote)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.forward")
+                                        .foregroundStyle(.secondary)
+                                }
                             }
                         }
+                        .buttonStyle(.plain)
                     }
                 }
-            }
 
-            Button(action: { showingAdd = true }) {
-                Label("Add Child", systemImage: "plus")
-            }.buttonStyle(.borderedProminent)
-            .padding()
+                Button(action: { showingAdd = true }) {
+                    Label("Add a child", systemImage: "plus.circle")
+                        .labelStyle(.titleAndIcon)
+                }
+                .buttonStyle(GlassButtonStyle(tint: LinearGradient(colors: [Color(red: 0.32, green: 0.86, blue: 0.94), Color(red: 0.72, green: 0.55, blue: 1.0)], startPoint: .topLeading, endPoint: .bottomTrailing)))
+            }
+            .padding(.vertical, 22)
         }
+        .scrollIndicators(.hidden)
         .sheet(isPresented: $showingAdd) {
             NavigationStack { AddChildSheet(childName: $childName, birthdate: $birthdate) }
         }
@@ -50,20 +83,42 @@ private struct AddChildSheet: View {
     @EnvironmentObject var familyVM: FamilyViewModel
     @Binding var childName: String
     @Binding var birthdate: Date?
-    @State private var hasDate: Bool = false
 
     var body: some View {
-        Form {
-            TextField("Name", text: $childName)
-            Toggle("Add birthdate", isOn: Binding(get: { birthdate != nil }, set: { val in birthdate = val ? Date() : nil }))
-            if let _ = birthdate {
-                DatePicker("Birthdate", selection: Binding(get: { birthdate ?? Date() }, set: { birthdate = $0 }), displayedComponents: .date)
+        ScrollView {
+            VStack(spacing: 18) {
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("New child")
+                            .font(.title2.weight(.semibold))
+                        TextField("Name", text: $childName)
+                            .textFieldStyle(.glass)
+
+                        Toggle("Add birthdate", isOn: Binding(get: { birthdate != nil }, set: { val in birthdate = val ? Date() : nil }))
+                            .toggleStyle(SwitchToggleStyle(tint: Color(red: 0.52, green: 0.75, blue: 1.0)))
+
+                        if let _ = birthdate {
+                            DatePicker("Birthdate", selection: Binding(get: { birthdate ?? Date() }, set: { birthdate = $0 }), displayedComponents: .date)
+                                .datePickerStyle(.graphical)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                        .fill(.ultraThinMaterial)
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        }
+
+                        Button("Save") {
+                            Task { await familyVM.createChild(name: childName, birthdate: birthdate); dismiss() }
+                        }
+                        .buttonStyle(GlassButtonStyle())
+                        .disabled(childName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
             }
-            Button("Save") {
-                Task { await familyVM.createChild(name: childName, birthdate: birthdate); dismiss() }
-            }.disabled(childName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .padding(24)
         }
+        .background(LiquidGlassBackground().ignoresSafeArea())
         .navigationTitle("New Child")
-        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: { dismiss() }) } }
+        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close", action: { dismiss() }) } }
     }
 }

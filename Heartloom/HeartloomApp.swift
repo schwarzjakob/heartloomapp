@@ -26,6 +26,7 @@ struct HeartloomApp: App {
                 .environmentObject(familyVM)
                 .environmentObject(composerVM)
                 .environmentObject(timelineVM)
+                .preferredColorScheme(.dark)
         }
     }
 }

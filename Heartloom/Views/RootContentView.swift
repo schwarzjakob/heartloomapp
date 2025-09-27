@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 @MainActor
 final class AppContainer: ObservableObject {
@@ -25,14 +26,24 @@ struct RootContentView: View {
     @EnvironmentObject var timelineVM: TimelineViewModel
 
     var body: some View {
-        Group {
-            if appState.currentUser == nil {
-                SignInView()
-            } else if appState.currentFamily == nil {
-                FamilySetupView()
-            } else {
-                MainTabsView()
+        ZStack {
+            LiquidGlassBackground()
+            Group {
+                if appState.currentUser == nil {
+                    SignInView()
+                        .transition(.opacity.combined(with: .scale))
+                } else if appState.currentFamily == nil {
+                    FamilySetupView()
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else {
+                    MainTabsView()
+                        .transition(.opacity)
+                }
             }
+            .padding(.horizontal, 16)
+            .frame(maxWidth: 900)
+            .animation(.easeInOut(duration: 0.35), value: appState.currentUser?.id)
+            .animation(.easeInOut(duration: 0.35), value: appState.currentFamily?.id)
         }
         .task(id: appState.currentFamily?.id) {
             await familyVM.loadChildren()
@@ -42,16 +53,52 @@ struct RootContentView: View {
 }
 
 struct MainTabsView: View {
+    init() {
+        let tabBar = UITabBar.appearance()
+        tabBar.unselectedItemTintColor = UIColor.white.withAlphaComponent(0.6)
+        tabBar.backgroundImage = UIImage()
+        tabBar.isTranslucent = true
+    }
+
     var body: some View {
         TabView {
-            NavigationStack { ChildTimelineView().navigationTitle("Timeline") }
-                .tabItem { Label("Timeline", systemImage: "clock") }
-            NavigationStack { EntryComposerView().navigationTitle("New Entry") }
-                .tabItem { Label("Add", systemImage: "plus.app") }
-            NavigationStack { ChildrenListView().navigationTitle("Children") }
-                .tabItem { Label("Children", systemImage: "person.2") }
-            NavigationStack { SettingsView().navigationTitle("Settings") }
-                .tabItem { Label("Settings", systemImage: "gear") }
+            NavigationStack {
+                ChildTimelineView()
+                    .navigationTitle("Timeline")
+                    .toolbarBackground(.visible, for: .navigationBar)
+                    .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            }
+            .tabItem { Label("Timeline", systemImage: "sparkle") }
+
+            NavigationStack {
+                EntryComposerView()
+                    .navigationTitle("New Entry")
+                    .toolbarBackground(.visible, for: .navigationBar)
+                    .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            }
+            .tabItem { Label("Add", systemImage: "plus.rectangle.on.rectangle") }
+
+            NavigationStack {
+                ChildrenListView()
+                    .navigationTitle("Children")
+                    .toolbarBackground(.visible, for: .navigationBar)
+                    .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            }
+            .tabItem { Label("Children", systemImage: "person.2.fill") }
+
+            NavigationStack {
+                SettingsView()
+                    .navigationTitle("Settings")
+                    .toolbarBackground(.visible, for: .navigationBar)
+                    .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            }
+            .tabItem { Label("Settings", systemImage: "gearshape.fill") }
         }
+        .tint(Color(red: 0.72, green: 0.82, blue: 1.0))
+        .background(
+            Color.clear
+                .background(.ultraThinMaterial)
+                .ignoresSafeArea(edges: .bottom)
+        )
     }
 }
