@@ -40,8 +40,7 @@ struct RootContentView: View {
                         .transition(.opacity)
                 }
             }
-            .padding(.horizontal, 16)
-            .frame(maxWidth: 900)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .animation(.easeInOut(duration: 0.35), value: appState.currentUser?.id)
             .animation(.easeInOut(duration: 0.35), value: appState.currentFamily?.id)
         }
@@ -65,40 +64,27 @@ struct MainTabsView: View {
             NavigationStack {
                 ChildTimelineView()
                     .navigationTitle("Timeline")
-                    .toolbarBackground(.visible, for: .navigationBar)
-                    .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             }
             .tabItem { Label("Timeline", systemImage: "sparkle") }
 
             NavigationStack {
                 EntryComposerView()
                     .navigationTitle("New Entry")
-                    .toolbarBackground(.visible, for: .navigationBar)
-                    .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             }
             .tabItem { Label("Add", systemImage: "plus.rectangle.on.rectangle") }
 
             NavigationStack {
                 ChildrenListView()
                     .navigationTitle("Children")
-                    .toolbarBackground(.visible, for: .navigationBar)
-                    .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             }
             .tabItem { Label("Children", systemImage: "person.2.fill") }
 
             NavigationStack {
                 SettingsView()
                     .navigationTitle("Settings")
-                    .toolbarBackground(.visible, for: .navigationBar)
-                    .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             }
             .tabItem { Label("Settings", systemImage: "gearshape.fill") }
         }
         .tint(Color(red: 0.72, green: 0.82, blue: 1.0))
-        .background(
-            Color.clear
-                .background(.ultraThinMaterial)
-                .ignoresSafeArea(edges: .bottom)
-        )
     }
 }

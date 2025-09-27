@@ -6,6 +6,9 @@ struct FamilySetupView: View {
 
     @State private var newFamilyName: String = ""
     @State private var joinCode: String = ""
+    @FocusState private var focusedField: Field?
+
+    private enum Field { case createName, joinCode }
 
     var body: some View {
         ScrollView {
@@ -20,6 +23,7 @@ struct FamilySetupView: View {
 
                         TextField("Family name", text: $newFamilyName)
                             .textFieldStyle(.glass)
+                            .focused($focusedField, equals: .createName)
 
                         Button(action: {
                             familyVM.familyName = newFamilyName
@@ -47,6 +51,7 @@ struct FamilySetupView: View {
                         TextField("Invite code", text: $joinCode)
                             .textInputAutocapitalization(.characters)
                             .textFieldStyle(.glass)
+                            .focused($focusedField, equals: .joinCode)
 
                         Button(action: {
                             familyVM.inviteCode = joinCode
@@ -67,9 +72,17 @@ struct FamilySetupView: View {
                 }
             }
             .padding(.vertical, 24)
+            .padding(.horizontal, 24)
         }
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle("Your Family")
         .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { focusedField = nil }
+            }
+        }
         .scrollIndicators(.hidden)
         .onAppear { Task { await familyVM.loadFamilies() } }
     }

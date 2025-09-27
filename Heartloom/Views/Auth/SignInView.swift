@@ -2,6 +2,9 @@ import SwiftUI
 
 struct SignInView: View {
     @EnvironmentObject var authVM: AuthViewModel
+    @FocusState private var focusedField: Field?
+
+    private enum Field { case name, email }
 
     var body: some View {
         VStack(spacing: 28) {
@@ -22,11 +25,16 @@ struct SignInView: View {
                         TextField("Your name", text: $authVM.displayName)
                             .textContentType(.name)
                             .textFieldStyle(.glass)
+                            .focused($focusedField, equals: .name)
+                            .submitLabel(.next)
 
                         TextField("Email", text: $authVM.email)
                             .textContentType(.emailAddress)
                             .keyboardType(.emailAddress)
                             .textFieldStyle(.glass)
+                            .focused($focusedField, equals: .email)
+                            .submitLabel(.done)
+                            .onSubmit { Task { await authVM.signIn() } }
                     }
 
                     Button(action: { Task { await authVM.signIn() } }) {
@@ -46,10 +54,16 @@ struct SignInView: View {
                     }
                 }
             }
-            .shadow(color: Color.black.opacity(0.3), radius: 30, y: 20)
-
+            .padding(.horizontal, 24)
+            
             Spacer()
         }
         .padding(.vertical, 32)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { focusedField = nil }
+            }
+        }
     }
 }

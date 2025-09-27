@@ -35,12 +35,15 @@ struct GlassCard<Content: View>: View {
             .background {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(.ultraThinMaterial)
+                    .background(
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(LinearGradient(colors: [Color.white.opacity(0.18), Color.white.opacity(0.05)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    )
                     .overlay(
                         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .stroke(LinearGradient(colors: [Color.white.opacity(0.45), Color.white.opacity(0.08)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.2)
+                            .stroke(LinearGradient(colors: [Color.white.opacity(0.35), Color.white.opacity(0.08)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 0.9)
                     )
-                    .shadow(color: Color.black.opacity(0.2), radius: 24, y: 12)
-                    .shadow(color: Color(red: 0.2, green: 0.5, blue: 0.95).opacity(0.25), radius: 30, y: 30)
+                    .shadow(color: Color.black.opacity(0.12), radius: 18, y: 10)
             }
     }
 }
@@ -53,8 +56,8 @@ struct GlassChip: ViewModifier {
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).stroke(Color.white.opacity(0.35)))
+                    .fill(LinearGradient(colors: [Color.white.opacity(0.14), Color.white.opacity(0.04)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .overlay(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).stroke(Color.white.opacity(0.28)))
             )
     }
 }
@@ -66,10 +69,10 @@ struct GlassTextFieldStyle: TextFieldStyle {
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(.ultraThinMaterial)
+                    .fill(LinearGradient(colors: [Color.white.opacity(0.16), Color.white.opacity(0.04)], startPoint: .topLeading, endPoint: .bottomTrailing))
                     .overlay(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(Color.white.opacity(0.28))
+                            .stroke(Color.white.opacity(0.24))
                     )
             )
             .foregroundStyle(.primary)
@@ -111,4 +114,3 @@ extension View {
 extension TextFieldStyle where Self == GlassTextFieldStyle {
     static var glass: GlassTextFieldStyle { GlassTextFieldStyle() }
 }
-

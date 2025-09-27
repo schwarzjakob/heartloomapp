@@ -7,6 +7,9 @@ struct EntryComposerView: View {
     @EnvironmentObject var appState: AppState
 
     @State private var showCamera = false
+    @FocusState private var focusedField: Field?
+
+    private enum Field { case description, tags }
 
     var body: some View {
         ScrollView {
@@ -33,7 +36,9 @@ struct EntryComposerView: View {
                 }
             }
             .padding(.vertical, 24)
+            .padding(.horizontal, 24)
         }
+        .scrollDismissesKeyboard(.interactively)
         .scrollIndicators(.hidden)
         .sheet(isPresented: $showCamera) {
             ImagePickerRepresentable(sourceType: .camera) { image in
@@ -41,6 +46,12 @@ struct EntryComposerView: View {
             }
         }
         .onAppear { Task { await familyVM.loadChildren() } }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { focusedField = nil }
+            }
+        }
     }
 
     private var mediaSection: some View {
@@ -90,23 +101,40 @@ struct EntryComposerView: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Story details")
                     .font(.title3.weight(.semibold))
-                TextEditor(text: $composerVM.descriptionText)
-                    .frame(minHeight: 140)
-                    .padding(12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .fill(.ultraThinMaterial)
-                            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.white.opacity(0.25)))
-                    )
-                    .foregroundStyle(.primary)
+
+                ZStack {
+                    // Your glassy container
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(LinearGradient(
+                            colors: [Color.white.opacity(0.12), Color.white.opacity(0.03)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(Color.white.opacity(0.18))
+                        )
+
+                    // The editor itself
+                    TextEditor(text: $composerVM.descriptionText)
+                        .frame(minHeight: 140)
+                        .padding(12)
+                        .scrollContentBackground(.hidden)  // <— hide the internal bg
+                        .background(.clear)                // <— keep the editor transparent
+                        .foregroundStyle(.primary)
+                        .focused($focusedField, equals: .description)
+                }
 
                 Button("Suggestions") {
                     Task { await composerVM.suggestDescription(children: familyVM.children) }
                 }
-                .buttonStyle(GlassButtonStyle(tint: LinearGradient(colors: [Color(red: 0.58, green: 0.7, blue: 1.0), Color(red: 0.83, green: 0.45, blue: 1.0)], startPoint: .topLeading, endPoint: .bottomTrailing)))
+                .buttonStyle(GlassButtonStyle(
+                    tint: LinearGradient(
+                        colors: [Color(red: 0.58, green: 0.7, blue: 1.0),
+                                Color(red: 0.83, green: 0.45, blue: 1.0)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing)))
             }
         }
     }
+
 
     private var tagsSection: some View {
         GlassCard {
@@ -115,6 +143,9 @@ struct EntryComposerView: View {
                     .font(.title3.weight(.semibold))
                 TextField("e.g., first steps, birthday", text: $composerVM.tags)
                     .textFieldStyle(.glass)
+                    .focused($focusedField, equals: .tags)
+                    .submitLabel(.done)
+                    .onSubmit { focusedField = nil }
 
                 if !composerVM.tags.isEmpty {
                     let current = composerVM.tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }

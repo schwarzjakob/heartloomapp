@@ -69,6 +69,7 @@ struct ChildrenListView: View {
                 .buttonStyle(GlassButtonStyle(tint: LinearGradient(colors: [Color(red: 0.32, green: 0.86, blue: 0.94), Color(red: 0.72, green: 0.55, blue: 1.0)], startPoint: .topLeading, endPoint: .bottomTrailing)))
             }
             .padding(.vertical, 22)
+            .padding(.horizontal, 24)
         }
         .scrollIndicators(.hidden)
         .sheet(isPresented: $showingAdd) {
@@ -83,6 +84,7 @@ private struct AddChildSheet: View {
     @EnvironmentObject var familyVM: FamilyViewModel
     @Binding var childName: String
     @Binding var birthdate: Date?
+    @FocusState private var isNameFocused: Bool
 
     var body: some View {
         ScrollView {
@@ -93,6 +95,7 @@ private struct AddChildSheet: View {
                             .font(.title2.weight(.semibold))
                         TextField("Name", text: $childName)
                             .textFieldStyle(.glass)
+                            .focused($isNameFocused)
 
                         Toggle("Add birthdate", isOn: Binding(get: { birthdate != nil }, set: { val in birthdate = val ? Date() : nil }))
                             .toggleStyle(SwitchToggleStyle(tint: Color(red: 0.52, green: 0.75, blue: 1.0)))
@@ -118,7 +121,14 @@ private struct AddChildSheet: View {
             .padding(24)
         }
         .background(LiquidGlassBackground().ignoresSafeArea())
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle("New Child")
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close", action: { dismiss() }) } }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { isNameFocused = false }
+            }
+        }
     }
 }

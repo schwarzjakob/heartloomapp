@@ -36,6 +36,7 @@ struct ChildTimelineView: View {
                 }
             }
             .padding(.vertical, 24)
+            .padding(.horizontal, 24)
         }
         .scrollIndicators(.hidden)
         .toolbar {
