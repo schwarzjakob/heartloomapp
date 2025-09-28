@@ -17,15 +17,35 @@ actor LocalStore {
         } else {
             self.data = AppData()
         }
+        migrateFamiliesIfNeeded()
     }
 
-    func save() throws {
+    private func migrateFamiliesIfNeeded() {
+        var changed = false
+        for idx in data.families.indices {
+            if data.families[idx].ownerId.isEmpty {
+                if let owner = data.families[idx].memberIds.first {
+                    data.families[idx].ownerId = owner
+                    changed = true
+                }
+            }
+            if !data.families[idx].ownerId.isEmpty && !data.families[idx].memberIds.contains(data.families[idx].ownerId) {
+                data.families[idx].memberIds.insert(data.families[idx].ownerId, at: 0)
+                changed = true
+            }
+        }
+        if changed {
+            try? persist()
+        }
+    }
+
+    func persist() throws {
         let d = try encoder.encode(data)
         try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try d.write(to: fileURL, options: .atomic)
     }
 
-    func upsert<T: Identifiable & Equatable>(_ value: T, into keyPath: WritableKeyPath<AppData, [T]>) {
+    private func upsert<T: Identifiable & Equatable>(_ value: T, into keyPath: WritableKeyPath<AppData, [T]>) {
         var list = data[keyPath: keyPath]
         if let idx = list.firstIndex(where: { $0.id == value.id }) {
             list[idx] = value
@@ -35,17 +55,20 @@ actor LocalStore {
         data[keyPath: keyPath] = list
     }
 
-    func append<T>(_ values: [T], into keyPath: WritableKeyPath<AppData, [T]>) {
+    private func append<T>(_ values: [T], into keyPath: WritableKeyPath<AppData, [T]>) {
         data[keyPath: keyPath].append(contentsOf: values)
     }
 
-    // Accessors
-    func findUser(byEmail email: String) -> UserAccount? {
-        data.users.first { $0.email.caseInsensitiveCompare(email) == .orderedSame }
+    func findUser(authUID: String, provider: String) -> UserAccount? {
+        data.users.first { $0.authUID == authUID && $0.provider == provider }
     }
 
-    func addUser(_ user: UserAccount) {
+    func saveUser(_ user: UserAccount) {
         upsert(user, into: \AppData.users)
+    }
+
+    func users(with ids: [ID]) -> [UserAccount] {
+        data.users.filter { ids.contains($0.id) }
     }
 
     func getFamilies(for userId: ID) -> [Family] {
@@ -58,6 +81,10 @@ actor LocalStore {
 
     func findFamily(byInvite code: String) -> Family? {
         data.families.first { $0.inviteCode.lowercased() == code.lowercased() }
+    }
+
+    func family(id: ID) -> Family? {
+        data.families.first { $0.id == id }
     }
 
     func updateFamily(_ family: Family) {
@@ -100,24 +127,25 @@ public final class LocalBackendService: BackendService {
         self.imageStore = ImageStore(baseURL: base.appendingPathComponent("Images"))
     }
 
-    public func signIn(displayName: String, email: String) async throws -> UserAccount {
-        if let existing = await store.findUser(byEmail: email) {
-            return existing
-        }
-        let user = UserAccount(id: newId(), displayName: displayName, email: email, createdAt: Date())
-        await store.addUser(user)
-        try await store.save()
+    public func user(byAuthUID authUID: String, provider: String) async throws -> UserAccount? {
+        await store.findUser(authUID: authUID, provider: provider)
+    }
+
+    public func saveUser(_ user: UserAccount) async throws -> UserAccount {
+        await store.saveUser(user)
+        try await store.persist()
         return user
     }
 
-    public func user(byEmail email: String) async throws -> UserAccount? {
-        await store.findUser(byEmail: email)
+    public func users(with ids: [ID]) async throws -> [UserAccount] {
+        await store.users(with: ids)
     }
 
     public func createFamily(name: String, ownerId: ID) async throws -> Family {
-        let family = Family(id: newId(), name: name, inviteCode: Self.makeInviteCode(), memberIds: [ownerId], createdAt: Date())
+        let uniqueMembers = Array(Set([ownerId]))
+        let family = Family(id: newId(), name: name, ownerId: ownerId, inviteCode: Self.makeInviteCode(), memberIds: uniqueMembers, createdAt: Date())
         await store.addFamily(family)
-        try await store.save()
+        try await store.persist()
         return family
     }
 
@@ -126,7 +154,7 @@ public final class LocalBackendService: BackendService {
         if !family.memberIds.contains(userId) {
             family.memberIds.append(userId)
             await store.updateFamily(family)
-            try await store.save()
+            try await store.persist()
         }
         return family
     }
@@ -135,10 +163,41 @@ public final class LocalBackendService: BackendService {
         await store.getFamilies(for: userId)
     }
 
+    public func family(id: ID) async throws -> Family? {
+        await store.family(id: id)
+    }
+
+    public func updateFamily(_ family: Family) async throws -> Family {
+        await store.updateFamily(family)
+        try await store.persist()
+        return family
+    }
+
+    public func removeMember(familyId: ID, memberId: ID, requesterId: ID) async throws {
+        guard var family = await store.family(id: familyId) else { throw AppError.notFound }
+        guard family.ownerId == requesterId else { throw AppError.unauthorized }
+        guard memberId != family.ownerId else { throw AppError.invalid }
+        if let idx = family.memberIds.firstIndex(of: memberId) {
+            family.memberIds.remove(at: idx)
+            await store.updateFamily(family)
+            try await store.persist()
+        }
+    }
+
+    public func leaveFamily(familyId: ID, memberId: ID) async throws {
+        guard var family = await store.family(id: familyId) else { throw AppError.notFound }
+        guard memberId != family.ownerId else { throw AppError.invalid }
+        if let idx = family.memberIds.firstIndex(of: memberId) {
+            family.memberIds.remove(at: idx)
+            await store.updateFamily(family)
+            try await store.persist()
+        }
+    }
+
     public func createChild(familyId: ID, name: String, birthdate: Date?) async throws -> ChildProfile {
         let child = ChildProfile(id: newId(), familyId: familyId, name: name, birthdate: birthdate, avatarPhotoId: nil, createdAt: Date())
         await store.addChild(child)
-        try await store.save()
+        try await store.persist()
         return child
     }
 
@@ -151,15 +210,15 @@ public final class LocalBackendService: BackendService {
             try imageStore.save(image: image)
         }
         await store.addPhotos(assets)
-        try await store.save()
+        try await store.persist()
         return assets
     }
 
     public func createJournalEntry(familyId: ID, childIds: [ID], photoIds: [ID], description: String, tags: [String], uploaderId: ID) async throws -> JournalEntry {
-        let e = JournalEntry(id: newId(), familyId: familyId, childIds: childIds, photoIds: photoIds, descriptionText: description, uploaderUserId: uploaderId, tags: tags, createdAt: Date())
-        await store.addEntry(e)
-        try await store.save()
-        return e
+        let entry = JournalEntry(id: newId(), familyId: familyId, childIds: childIds, photoIds: photoIds, descriptionText: description, uploaderUserId: uploaderId, tags: tags, createdAt: Date())
+        await store.addEntry(entry)
+        try await store.persist()
+        return entry
     }
 
     public func entries(inFamily familyId: ID) async throws -> [JournalEntry] {
@@ -175,4 +234,3 @@ public final class LocalBackendService: BackendService {
         return String((0..<6).map { _ in letters.randomElement()! })
     }
 }
-

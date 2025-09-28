@@ -3,6 +3,9 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var familyVM: FamilyViewModel
+    @EnvironmentObject var authVM: AuthViewModel
+
+    @State private var showSignOutConfirm = false
 
     var body: some View {
         ScrollView {
@@ -15,6 +18,13 @@ struct SettingsView: View {
                             settingsRow(title: "Name", value: user.displayName, systemIcon: "person.circle")
                             settingsRow(title: "Email", value: user.email, systemIcon: "envelope")
                         }
+                        Button(role: .destructive) {
+                            showSignOutConfirm = true
+                        } label: {
+                            Label("Sign out", systemImage: "arrow.backward.circle")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .tint(.pink)
                     }
                 }
 
@@ -25,6 +35,10 @@ struct SettingsView: View {
                         if let fam = appState.currentFamily {
                             settingsRow(title: "Family", value: fam.name, systemIcon: "house")
                             settingsRow(title: "Invite code", value: fam.inviteCode, systemIcon: "person.3.sequence")
+                            NavigationLink(destination: FamilyMembersView()) {
+                                Label("Members & roles", systemImage: "person.3.fill")
+                            }
+                            .buttonStyle(.plain)
                         } else {
                             Text("Create or join a family to unlock the shared timeline experience.")
                                 .foregroundStyle(.secondary)
@@ -36,6 +50,17 @@ struct SettingsView: View {
             .padding(.horizontal, 24)
         }
         .scrollIndicators(.hidden)
+        .confirmationDialog("Sign out of Heartloom?", isPresented: $showSignOutConfirm) {
+            Button("Sign out", role: .destructive) {
+                Task {
+                    await authVM.signOut()
+                    familyVM.families = []
+                    familyVM.children = []
+                    familyVM.members = []
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
     }
 
     private func settingsRow(title: String, value: String, systemIcon: String) -> some View {

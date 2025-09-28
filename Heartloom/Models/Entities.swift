@@ -4,17 +4,67 @@ public typealias ID = String
 
 public struct UserAccount: Codable, Identifiable, Equatable {
     public let id: ID
+    public let authUID: String
+    public let provider: String
     public var displayName: String
     public var email: String
+    public var photoURL: String?
     public var createdAt: Date
+
+    public init(id: ID, authUID: String, provider: String, displayName: String, email: String, photoURL: String?, createdAt: Date) {
+        self.id = id
+        self.authUID = authUID
+        self.provider = provider
+        self.displayName = displayName
+        self.email = email
+        self.photoURL = photoURL
+        self.createdAt = createdAt
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(ID.self, forKey: .id)
+        self.authUID = try container.decodeIfPresent(String.self, forKey: .authUID) ?? id
+        self.provider = try container.decodeIfPresent(String.self, forKey: .provider) ?? "local"
+        self.displayName = try container.decode(String.self, forKey: .displayName)
+        self.email = try container.decode(String.self, forKey: .email)
+        self.photoURL = try container.decodeIfPresent(String.self, forKey: .photoURL)
+        self.createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+    }
 }
 
 public struct Family: Codable, Identifiable, Equatable {
     public let id: ID
     public var name: String
+    public var ownerId: ID
     public var inviteCode: String
     public var memberIds: [ID]
     public var createdAt: Date
+
+    public init(id: ID, name: String, ownerId: ID, inviteCode: String, memberIds: [ID], createdAt: Date) {
+        self.id = id
+        self.name = name
+        self.ownerId = ownerId
+        self.inviteCode = inviteCode
+        self.memberIds = memberIds
+        self.createdAt = createdAt
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(ID.self, forKey: .id)
+        self.name = try container.decode(String.self, forKey: .name)
+        self.inviteCode = try container.decode(String.self, forKey: .inviteCode)
+        self.memberIds = try container.decodeIfPresent([ID].self, forKey: .memberIds) ?? []
+        self.createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        if let owner = try container.decodeIfPresent(ID.self, forKey: .ownerId) {
+            self.ownerId = owner
+        } else if let firstMember = memberIds.first {
+            self.ownerId = firstMember
+        } else {
+            self.ownerId = ""
+        }
+    }
 }
 
 public struct ChildProfile: Codable, Identifiable, Equatable {

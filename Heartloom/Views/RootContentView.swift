@@ -4,6 +4,7 @@ import UIKit
 @MainActor
 final class AppContainer: ObservableObject {
     let backend: BackendService
+    let auth: AuthService
     let appState: AppState
     let imageStore: ImageStoring
     let ai: AISuggestionService
@@ -11,6 +12,7 @@ final class AppContainer: ObservableObject {
     init(useVisionAI: Bool = true) {
         let backend = LocalBackendService()
         self.backend = backend
+        self.auth = LocalAuthService(backend: backend)
         self.appState = AppState()
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
             .appendingPathComponent("Heartloom/Images")
@@ -22,6 +24,7 @@ final class AppContainer: ObservableObject {
 struct RootContentView: View {
     @EnvironmentObject var container: AppContainer
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var authVM: AuthViewModel
     @EnvironmentObject var familyVM: FamilyViewModel
     @EnvironmentObject var timelineVM: TimelineViewModel
 
@@ -44,8 +47,14 @@ struct RootContentView: View {
             .animation(.easeInOut(duration: 0.35), value: appState.currentUser?.id)
             .animation(.easeInOut(duration: 0.35), value: appState.currentFamily?.id)
         }
+        .task { await authVM.restore() }
+        .task(id: appState.currentUser?.id) {
+            guard appState.currentUser != nil else { return }
+            await familyVM.loadFamilies()
+        }
         .task(id: appState.currentFamily?.id) {
             await familyVM.loadChildren()
+            await familyVM.refreshMembers()
             await timelineVM.load()
         }
     }

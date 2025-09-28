@@ -8,13 +8,25 @@ public final class AppState: ObservableObject {
     @Published public var selectedChild: ChildProfile?
 }
 
+public protocol AuthService: Sendable {
+    func restoreSession() async -> UserAccount?
+    func signInWithApple(idToken: String, nonce: String, displayName: String?, email: String?) async throws -> UserAccount
+    func signInWithGoogle(idToken: String, accessToken: String, displayName: String?, email: String?) async throws -> UserAccount
+    func signOut() async
+}
+
 public protocol BackendService: Sendable {
-    func signIn(displayName: String, email: String) async throws -> UserAccount
-    func user(byEmail email: String) async throws -> UserAccount?
+    func user(byAuthUID authUID: String, provider: String) async throws -> UserAccount?
+    func saveUser(_ user: UserAccount) async throws -> UserAccount
+    func users(with ids: [ID]) async throws -> [UserAccount]
 
     func createFamily(name: String, ownerId: ID) async throws -> Family
     func joinFamily(inviteCode: String, userId: ID) async throws -> Family
     func families(forUser userId: ID) async throws -> [Family]
+    func family(id: ID) async throws -> Family?
+    func updateFamily(_ family: Family) async throws -> Family
+    func removeMember(familyId: ID, memberId: ID, requesterId: ID) async throws
+    func leaveFamily(familyId: ID, memberId: ID) async throws
 
     func createChild(familyId: ID, name: String, birthdate: Date?) async throws -> ChildProfile
     func children(inFamily familyId: ID) async throws -> [ChildProfile]

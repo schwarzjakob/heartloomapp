@@ -48,6 +48,23 @@
     <string>This app saves selected photos to your library when exporting or sharing.</string>
     <key>NSCameraUsageDescription</key>
     <string>This app needs access to your camera to capture photos for journal entries.</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.heartloom.google</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>com.googleusercontent.apps.250765100903-4f2kmen4c3mv8s7n49bbd40tr86i036t</string>
+            </array>
+        </dict>
+    </array>
+    <key>GIDClientID</key>
+    <string>250765100903-4f2kmen4c3mv8s7n49bbd40tr86i036t.apps.googleusercontent.com</string>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>google</string>
+        <string>com.googleusercontent.apps.heartloom</string>
+    </array>
 </dict>
 </plist>
-
